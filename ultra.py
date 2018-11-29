@@ -28,16 +28,17 @@ import re
 import time
 from num2words import num2words
 
-# Import text to feed the Markov models
+# Load input text for the Markov models
 with open("barkley.txt", encoding="utf8") as f:
     text_race = f.read()
 with open("erowid.txt", encoding="utf8") as f:
     text_trip = f.read()
 
-# Some descriptive variables to add flavour
+# Create descriptive variables to add flavour
 with open("vars.json", encoding="utf8") as f:
     vars = json.load(f)
-athlete = random.choice(vars["athlete"])
+athletes = random.sample(vars["athlete"], len(vars["athlete"]))
+athlete = athletes.pop()
 race_name = random.choice(vars["race_name"])
 race_dist = random.randint(600,1000)
 race_adj = random.choice(vars["race_adj"])
@@ -45,10 +46,10 @@ race_loc = random.choice(vars["race_loc"])
 race_sig = random.choice(vars["race_sig"])
 competitors = random.randint(40,120)
 
-# Some internal consistency is better than none
+# Add a sliver of internal consistency
 text_race = text_race.replace('Barkley', race_name)
 
-# Use NLTK to improve model quality (https://github.com/jsvine/markovify)
+# Improve model quality (see https://github.com/jsvine/markovify)
 class POSifiedText(markovify.Text):
     def word_split(self, sentence):
         words = re.split(self.word_split_pattern, sentence)
@@ -84,11 +85,9 @@ text = (r'''\documentclass[12pt,titlepage,a4paper]{article}
 \date{''' + time.strftime('%d %B %Y') + r'''}
 \maketitle''' + '\n\n')
 
-# The race is split into legs, each of whose entries is split into arbitrary
-# paragraphs to improve readability
+# Split report into race legs with entries made of arbitrary paragraphs
 legs = range(1,random.randint(16,24))
 headings = random.sample(vars["middle"], len(vars["middle"]))
-athletes = random.sample(vars["athlete"], len(vars["athlete"]))
 len_chap = [8, 13, 17, 25, 31, 33, 34, 35, 36, 37, 39, 44, 50, 55, 67]
 len_para = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 7, 9, 11]
 wc = 0
@@ -109,7 +108,7 @@ for leg in legs:
     else:
         text += r'\section*{' + headings.pop() +'}\n\n'
 
-    # A paper-thin veneer of coherent narrative
+    # Add a paper-thin veneer of coherent narrative
     half = str(int(round(race_dist/2,-1)))
     dropped = int(round(random.randint(2,round(max(legs)/4))))
     competitors -= dropped
@@ -123,19 +122,20 @@ for leg in legs:
     elif leg == int(max(legs)/2):
         text += ('I glanced down at my watch. ' + half + '-ish kilometres down, '
         + half + ' to go! ')
-    elif leg == max(legs)-1 and competitors > 1:
-        text += 'Only ' + str(competitors) + ' others were still in the race. '
-    elif leg == max(legs)-1 and competitors == 1:
-        text += 'Only ' + athletes.pop() + ' and I were still in the race. '
-    elif leg == max(legs)-1 and competitors < 1:
-        text += ('I was the only person left with a hope of completing the '
-        + race_name + ' this year. ')
+    elif leg == max(legs)-1:
+        if competitors > 1:
+            text += 'Only ' + str(competitors) + ' others were still racing. '
+        elif competitors == 1:
+            text += 'Only ' + athletes.pop() + ' and I were still in the race. '
+        elif competitors < 1:
+            text += ('I was the only person left with a hope of completing the '
+            + race_name + ' this year. ')
     elif leg == max(legs):
         text += ('I could taste the end of this ' + str(int(max(legs)/2))
         + '-day beast ' + race_loc + '. ')
 
-    # This number pair will weight the mixed Markov model for this iteration,
-    # initially race reports only, with increasingly stronger trip influences
+    # Generate a number pair to weight this iteration's mixed model. Initially,
+    # trip reports are ignored, but their influence becomes stronger over time.
     div = leg/max(legs)
     if div < .25:
         mix = [1, 0]
